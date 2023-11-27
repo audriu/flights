@@ -11,18 +11,26 @@
    ["Zadar" "Kiev"]    {:price 200 :connections 2}
    ["Zadar" "Madrid"]  {:price 200 :connections 1}})
 
-(defn get-all-flight-paths [departure destination]
-  ;; todo this is not working at the moment. instead it has hardcoded lists;
-  ;; todo use available-flights to generate all possible routes
-  (cond (= ["Prague" "Zadar"] [departure destination])
-        [{["Prague" "Vienna"] {:price 100 :connections 1}
-          ["Vienna" "Zadar"]  {:price 200 :connections 1}}]
+(defn get-all-flight-hops [src dest]
+  (letfn [(search [current-path visited?]
+            (let [current-city (peek current-path)]
+              (if (= current-city dest)
+                (list current-path)
+                (mapcat (fn [[[from to] _]]
+                          (when (and (= current-city from)
+                                     (not (visited? to)))
+                            (search (conj current-path to) (conj visited? to))))
+                        available-flights))))]
+    (search [src] #{src})))
 
-        (= ["Prague" "Madrid"] [departure destination])
-        [{["Prague" "Madrid"] {:price 100 :connections 1}}
-         {["Prague" "Vienna"] {:price 100 :connections 1}
-          ["Vienna" "Zadar"]  {:price 200 :connections 1}
-          ["Zadar" "Madrid"]  {:price 200 :connections 1}}]))
+(defn get-all-flight-paths [src dest]
+  (let [hops (get-all-flight-hops src dest)]
+    (map (fn [hop]
+           (->> hop
+                (partition 2 1)
+                (map vec)
+                (select-keys available-flights)))
+         hops)))
 
 ; Define the basic requirements for families and groups. Here, we use a map where the
 ; keys are the type of passenger group ('family' or 'group') and the values are maps
